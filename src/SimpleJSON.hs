@@ -3,49 +3,28 @@
 
 module SimpleJSON
   
-  (
-      JValue(..)
-    , getString
-    , getInt
-    , getDouble
-    , getBool
-    , getObject
-    , getArray
-    , isNull
-    ,JSONError
-    , JSON (..)
-    ) 
+
     
     where
+
+import Control.Arrow (second)
+        
+newtype JAry a = JAry {
+      fromJAry :: [a]
+    } deriving (Eq, Ord, Show)
+
+newtype JObj a = JObj {
+      fromJObj :: [(String, a)]
+    } deriving (Eq, Ord, Show)
 
 data JValue = JString String
             | JNumber Double
             | JBool Bool
             | JNull
-            | JObject [(String, JValue)]
-            | JArray [JValue]
+            | JObject (JObj JValue)   -- was [(String, JValue)]
+            | JArray (JAry JValue)    -- was [JValue]
               deriving (Eq, Ord, Show)
 
-getString :: JValue -> Maybe String
-getString (JString s) = Just s
-getString _           = Nothing
-
-getInt (JNumber n) = Just (truncate n)
-getInt _           = Nothing
-
-getDouble (JNumber n) = Just n
-getDouble _           = Nothing
-
-getBool (JBool b) = Just b
-getBool _         = Nothing
-
-getObject (JObject o) = Just o
-getObject _           = Nothing
-
-getArray (JArray a) = Just a
-getArray _          = Nothing
-
-isNull v            = v == JNull
 
 
 type JSONError = String
@@ -54,6 +33,7 @@ class JSON a where
     toJValue :: a -> JValue
     fromJValue :: JValue -> Either JSONError a
 
+  
 instance JSON JValue where
     toJValue = id
     fromJValue = Right
@@ -94,3 +74,45 @@ instance (JSON a) => JSON [a] where
 instance (JSON a) => JSON [(String, a)] where
     toJValue = undefined
     fromJValue = undefined
+
+
+listToJValues :: (JSON a) => [a] -> [JValue]
+listToJValues = map toJValue
+
+jaryOfJValuesToJValue :: JAry JValue -> JValue
+jaryOfJValuesToJValue = JArray
+
+whenRight :: (b -> c) -> Either a b -> Either a c
+whenRight _ (Left err) = Left err
+whenRight f (Right a) = Right (f a)
+
+mapEithers :: (a -> Either b c) -> [a] -> Either b [c]
+mapEithers f (x:xs) = case mapEithers f xs of
+                        Left err -> Left err
+                        Right ys -> case f x of
+                                      Left err -> Left err
+                                      Right y -> Right (y:ys)
+mapEithers _ _ = Right []
+
+jaryFromJValue :: (JSON a) => JValue -> Either JSONError (JAry a)
+jaryFromJValue (JArray (JAry a)) =
+    whenRight JAry (mapEithers fromJValue a)
+jaryFromJValue _ = Left "not a JSON array"
+
+jaryToJValue :: (JSON a) => JAry a -> JValue
+jaryToJValue = JArray . JAry . map toJValue . fromJAry
+
+
+instance (JSON a) => JSON (JAry a) where
+    toJValue = jaryToJValue
+    fromJValue = jaryFromJValue
+
+
+instance (JSON a) => JSON (JObj a) where
+    toJValue = JObject . JObj . map (second toJValue) . fromJObj
+
+    fromJValue (JObject (JObj o)) = whenRight JObj (mapEithers unwrap o)
+      where unwrap (k,v) = whenRight ((,) k) (fromJValue v)
+    fromJValue _ = Left "not a JSON object"
+
+
