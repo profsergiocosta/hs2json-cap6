@@ -6,5 +6,4 @@ import SimpleJSON
 
 
 main :: IO ()
-main = do
-    putStrLn (show $ toJValue (10::Integer))
+main = print $ toJValue (10::Integer)

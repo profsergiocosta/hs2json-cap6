@@ -100,7 +100,7 @@ jaryFromJValue (JArray (JAry a)) =
 jaryFromJValue _ = Left "not a JSON array"
 
 jaryToJValue :: (JSON a) => JAry a -> JValue
-jaryToJValue = JArray . JAry . map toJValue . fromJAry
+jaryToJValue = JArray . JAry . map toJValue . fromJAry 
 
 
 instance (JSON a) => JSON (JAry a) where
