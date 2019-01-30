@@ -1,13 +1,20 @@
 module Main (main) where
 
 import SimpleJSON
-import Prettify
-import PrettyJSON
 
+result :: JValue
+result = JObject [
+  ("query", JString "awkward squad haskell"),
+  ("estimatedCount", JNumber 3920),
+  ("moreResults", JBool True),
+  ("results", JArray [
+     JObject [
+      ("title", JString "Simon Peyton Jones: papers"),
+      ("snippet", JString "Tackling the awkward ..."),
+      ("url", JString "http://.../marktoberdorf/")
+     ]])
+  ]
 
-value = renderJValue $ JObject [("f", JNumber 1), ("q", JBool True)]
 main :: IO ()
 main = do
-    putStrLn (pretty 10 value)
-    putStrLn (pretty 20 value)
-    putStrLn (pretty 30 value)
+    putStrLn (show result)
